@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/main_layout">
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:weightSum="1"
+        android:id="@+id/layout_split">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="193dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.00"
+            android:weightSum="1"
+            android:id="@+id/description_split">
+
+            <TextView
+                android:text="Allow Discrete Imaging"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/allow_imaging_text_main"
+                android:paddingTop="7dp"
+                android:paddingLeft="5dp" />
+
+            <TextView
+                android:text="This allows the app to work"
+                android:layout_width="match_parent"
+                android:id="@+id/allow_imaging_text_sub"
+                android:paddingLeft="20dp"
+                android:textScaleX="0.8"
+                android:layout_height="18dp" />
+
+            <TextView
+                android:text="Data Capture Period"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/period_text_main"
+                android:paddingTop="7dp"
+                android:paddingLeft="5dp" />
+
+            <TextView
+                android:text="This is the time in seconds in between data captures"
+                android:layout_width="match_parent"
+                android:id="@+id/period_text_sub"
+                android:paddingLeft="20dp"
+                android:textScaleX="0.8"
+                android:layout_height="18dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="91dp"
+            android:layout_height="match_parent"
+            android:weightSum="1"
+            android:id="@+id/interface_split">
+
+            <CheckBox
+                android:layout_width="match_parent"
+                android:id="@+id/allow_imaging_check"
+                android:checked="true"
+                android:layout_weight="0.03"
+                android:layout_height="28dp" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="10"
+                android:id="@+id/period_num"
+                android:hint="seconds"
+                android:text="10" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
