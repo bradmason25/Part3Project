@@ -183,7 +183,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     //the events where data is exported to a server. These timers will begin once this method is called
     public void startTimers() {
         PhotoTakingService pt = new PhotoTakingService();
-        final Intent serviceIntent = new Intent(MainActivity.this, PhotoTakingService.class);//(MainActivity.this, PhotoTakingService.class);
+        final Intent serviceIntent = new Intent(MainActivity.this, PhotoTakingService.class);
         final Handler handler = new Handler();
 
         //This TimerTask also collects data from gui view which shouldn't be used in final data

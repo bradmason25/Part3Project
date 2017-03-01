@@ -15,7 +15,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -41,7 +40,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     private int period = 10000;
     //Photo Variables
     boolean isFocusing = false;
-    Bitmap bmp;
     Face face;
     boolean noFace = true;
 
@@ -61,28 +59,25 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
 
         //Photo stuffs
         takePhoto(this);
+    }
 
-        if(bmp != null) {
-            Log.i("Image Capture","successful bitmap capture");
-            Frame.BitmapFrame frame = new Frame.BitmapFrame(bmp, Frame.COLOR_FORMAT.UNKNOWN_TYPE);
+    private void processImage(Bitmap bmp) {
+        showMessage("Processing Image");
+        Frame.BitmapFrame frame = new Frame.BitmapFrame(bmp, Frame.COLOR_FORMAT.UNKNOWN_TYPE);
 
-            detector = new PhotoDetector(this, 1, Detector.FaceDetectorMode.LARGE_FACES);
-            detector.setDetectAllEmotions(true);
-            detector.setDetectAllExpressions(true);
-            detector.setDetectAllAppearances(true);
-            detector.setImageListener(this);
+        detector = new PhotoDetector(this,1, Detector.FaceDetectorMode.LARGE_FACES);
+        detector.setDetectAllEmotions(true);
+        detector.setDetectAllExpressions(true);
+        detector.setDetectAllAppearances(true);
+        detector.setImageListener(this);
 
-            startDetector();
-            detector.process(frame);
-            stopDetector();
+        startDetector();
+        detector.process(frame);
+        stopDetector();
 
-            String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
-                    String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getMovement()), String.valueOf(System.currentTimeMillis())};
-            csv.addData(newLine);
-        }
-        else {
-            Log.i("Image Capture","bitmap is null");
-        }
+        String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
+                String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getMovement()), String.valueOf(System.currentTimeMillis())};
+        csv.addData(newLine);
         stopSelf();
     }
 
@@ -103,13 +98,13 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             @Override
             //The preview must happen at or after this point or takePicture fails
             public void surfaceCreated(SurfaceHolder holder) {
-                showMessage("Surface created");
+                //showMessage("Surface created");
 
                 Camera camera = null;
 
                 try {
                     camera = openFrontFacingCameraGingerbread();
-                    showMessage("Opened camera");
+                    //showMessage("Opened camera");
 
                     try {
                         camera.setPreviewDisplay(holder);
@@ -118,15 +113,15 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                     }
 
                     camera.startPreview();
-                    showMessage("Started preview");
+                    //showMessage("Started preview");
 
                     final Camera.PictureCallback pictureCallback = new Camera.PictureCallback() {
 
                         @Override
                         public void onPictureTaken(byte[] data, Camera camera) {
-                            bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-                            showMessage("Took picture");
                             camera.release();
+                            showMessage("Image Captured");
+                            processImage(BitmapFactory.decodeByteArray(data, 0, data.length));
                         }
                     };
 
@@ -140,7 +135,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         }
                     };
                     camera.autoFocus(autoFocusCallback);
-
                 } catch (Exception e) {
                     if (camera != null)
                         camera.release();
