@@ -6,7 +6,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -35,6 +37,8 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     //GUI Variables
     TextView resultTextView, emojiTextView, debug;
     ToggleButton toggleButton;
+    Button settingsButton;
+    Intent settingsIntent;
     SurfaceView cameraPreview;
     RelativeLayout mainLayout;
 
@@ -44,11 +48,12 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     CameraDetector detector;
     int previewWidth = 0;
     int previewHeight = 0;
-    boolean noface = true;
+    boolean SDKon;
     Face face;
+    Intent serviceIntent;
 
     //Timer Variables
-    int timerPeriod = 15000;
+    int timerPeriod = 10000;
     static Timer timer = new Timer();
 
     CSV csv;
@@ -59,6 +64,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         setContentView(R.layout.activity_main);
 
         //Initialise Variables
+        SDKon = true;
         resultTextView = (TextView) findViewById(R.id.result_textview);
         emojiTextView = (TextView) findViewById(R.id.emoji_textview);
 
@@ -68,6 +74,19 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 isCameraBack = isChecked;
                 switchCamera(isCameraBack? CameraDetector.CameraType.CAMERA_BACK : CameraDetector.CameraType.CAMERA_FRONT);
+            }
+        });
+
+        String permit = "false";
+        settingsIntent = new Intent(MainActivity.this, SettingsActivity.class);
+        settingsIntent.putExtra("permit", permit);
+
+        settingsButton = (Button) findViewById(R.id.settings_button);
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(settingsIntent);
+                Log.i("DEBUG",settingsIntent.getStringExtra("permit"));
             }
         });
 
@@ -115,17 +134,25 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopService(serviceIntent);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         if (isSDKStarted) {
             startDetector();
         }
+        SDKon = true;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         stopDetector();
+        SDKon = false;
     }
 
     void startDetector() {
@@ -149,12 +176,10 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         if (list == null)
             return;
         if (list.size() == 0) {
-            noface = true;
             resultTextView.setText("No Face Detected");
             emojiTextView.setText("");
         } else {
             face = list.get(0);
-            noface = false;
             if (face.emojis.getDominantEmoji().name().contains("UNKNOWN")) {
                 resultTextView.setText("NEUTRAL");
             }
@@ -183,7 +208,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     //the events where data is exported to a server. These timers will begin once this method is called
     public void startTimers() {
         PhotoTakingService pt = new PhotoTakingService();
-        final Intent serviceIntent = new Intent(MainActivity.this, PhotoTakingService.class);
+        serviceIntent = new Intent(MainActivity.this, PhotoTakingService.class);
         final Handler handler = new Handler();
 
         //This TimerTask also collects data from gui view which shouldn't be used in final data
@@ -193,18 +218,17 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        if(face != null && !noface) {
-                            Log.i("Data Collection", "Called");
+                        Log.i("Data Collection", "Called");
 
+                        if(!SDKon)
                             startService(serviceIntent);
-                            //debug.setText(newLine[4]);
-                            //incrLog();
-                        }
+                        //debug.setText(newLine[4]);
+                        //incrLog();
                     }
                 });
             }
         };
-        timer.schedule(dataCollectionTask, 0, timerPeriod);
+        timer.schedule(dataCollectionTask, timerPeriod, timerPeriod);
         //It's advisable to run the export task with a delay that doesn't coincide with above period so that the tasks don't overlap
         //timer.schedule(dataExportTask, 330000, 300000);
 

@@ -26,9 +26,12 @@ import com.affectiva.android.affdex.sdk.detector.Detector;
 import com.affectiva.android.affdex.sdk.detector.Face;
 import com.affectiva.android.affdex.sdk.detector.PhotoDetector;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Exchanger;
 
 /** Takes a single photo on service start. */
 public class PhotoTakingService extends Service implements SensorEventListener, Detector.ImageListener {
@@ -37,7 +40,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     private SensorManager mSensorManager;
     private Sensor motionDetector;
     private List<Double> movement;
-    private int period = 10000;
     //Photo Variables
     boolean isFocusing = false;
     Face face;
@@ -75,9 +77,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         detector.process(frame);
         stopDetector();
 
-        String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
-                String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getMovement()), String.valueOf(System.currentTimeMillis())};
-        csv.addData(newLine);
+
         stopSelf();
     }
 
@@ -103,7 +103,8 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                 Camera camera = null;
 
                 try {
-                    camera = openFrontFacingCameraGingerbread();
+                    //camera = openFrontFacingCameraGingerbread();
+                    camera = Camera.open(1);
                     //showMessage("Opened camera");
 
                     try {
@@ -112,6 +113,10 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         throw new RuntimeException(e);
                     }
 
+
+                    Camera.Parameters params = camera.getParameters();
+                    params.setExposureCompensation(12);
+                    camera.setParameters(params);
                     camera.startPreview();
                     //showMessage("Started preview");
 
@@ -121,7 +126,25 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         public void onPictureTaken(byte[] data, Camera camera) {
                             camera.release();
                             showMessage("Image Captured");
-                            processImage(BitmapFactory.decodeByteArray(data, 0, data.length));
+                            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
+
+                            File photo = new File(getExternalFilesDir(null).toString()+"/image"+System.currentTimeMillis()+".jpg");
+                            FileOutputStream fos = null;
+                            if (photo.exists())
+                                photo.delete();
+                            try {
+                                fos = new FileOutputStream(photo.getPath());
+                                bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                            } catch (Exception e) {e.printStackTrace();}
+                            finally {
+                                try {
+                                    if (fos != null) {
+                                        fos.close();
+                                    }
+                                } catch (Exception e) {e.printStackTrace();}
+                            }
+
+                            processImage(bmp);
                         }
                     };
 
@@ -172,7 +195,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         for (Double d: temp) {
             sum += d;
         }
-        return (sum/temp.size())*Math.pow(period/1000,2);
+        return (sum/temp.size())*Math.pow(10000/1000,2);
     }
 
     private Camera openFrontFacingCameraGingerbread() {
@@ -218,9 +241,14 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             return;
         if (list.size() == 0) {
             noFace = true;
+            showMessage("No Face Found");
         } else {
             face = list.get(0);
             noFace = false;
+            String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
+                    String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getMovement()), String.valueOf(System.currentTimeMillis())};
+            csv.addData(newLine);
+            showMessage("Found A Face");
         }
     }
     void startDetector() {

@@ -2,6 +2,8 @@ package com.affectiva.part3project;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
@@ -18,12 +20,16 @@ public class SettingsActivity extends Activity{
     LinearLayout mainLayout, layoutSplit, descriptionSplit, interfaceSplit;
     TextView allowImagingTextMain, allowImagingTextSub;
     CheckBox allowImagingCheck;
+    Button submitButton;
     //Other Variables
     boolean allowImaging;
+    String test;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+
+        test = getIntent().getStringExtra("permit");
 
         //Initialise GUI Layouts
         mainLayout = (LinearLayout) findViewById(R.id.main_layout);
@@ -43,6 +49,21 @@ public class SettingsActivity extends Activity{
         });
         //Initialise other variables
         allowImaging = allowImagingCheck.isChecked();
+        submitButton = (Button) findViewById(R.id.submit_button);
+        submitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                submitVariables();
+                finish();
+            }
+        });
 
+    }
+
+    private void submitVariables() {
+        test = String.valueOf(allowImaging);
+        //getApplication().setPeriod(test);
+        //getParentActivityIntent().putExtra("permit", test);
+        //TODO make the variable changes permanent in the main activity
     }
 }
