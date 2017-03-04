@@ -2,8 +2,10 @@ package com.affectiva.part3project;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
@@ -31,6 +33,12 @@ import java.util.TimerTask;
  *
  * For use with SDK 2.02
  */
+
+
+//https://github.com/PhilJay/MPAndroidChart
+//This is the URL for help with the chart api that has already been added to the repositories
+
+
 public class MainActivity extends Activity implements Detector.ImageListener, CameraDetector.CameraEventListener {
     final String LOG_TAG = "Part3Project";
 
@@ -54,9 +62,10 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
 
     //Timer Variables
     int timerPeriod = 10000;
-    static Timer timer = new Timer();
+    Timer timer = new Timer();
 
     CSV csv;
+    SharedPreferences preferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +86,8 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             }
         });
 
+
+
         String permit = "false";
         settingsIntent = new Intent(MainActivity.this, SettingsActivity.class);
         settingsIntent.putExtra("permit", permit);
@@ -85,8 +96,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(settingsIntent);
-                Log.i("DEBUG",settingsIntent.getStringExtra("permit"));
+                startActivityForResult(settingsIntent, 0xe110);
             }
         });
 
@@ -130,7 +140,33 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
 
         csv = new CSV(getExternalFilesDir(null).toString()+"/data.csv");
 
+        preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        try {
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putInt("timerPeriod", timerPeriod/1000);
+            editor.commit();
+        } catch(Exception e) {
+            Log.e("Settings","Failure submitting new settings");
+            //e.printStackTrace();
+        }
+
         startTimers();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        try {
+            //This is called when the settings activity is closed
+            //It corrects the parameters from settings
+            timerPeriod = preferences.getInt("timerPeriod", 0)*1000;
+            //This resets the timers with the new period from settings
+            timer.cancel();
+            timer.purge();
+            timer = new Timer();
+            startTimers();
+        } catch(Exception e) {e.printStackTrace();}
+
     }
 
     @Override
@@ -207,7 +243,6 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     //This is where the scheduling is organised, once called it will create the events whereby data is captured and recorded along wiht
     //the events where data is exported to a server. These timers will begin once this method is called
     public void startTimers() {
-        PhotoTakingService pt = new PhotoTakingService();
         serviceIntent = new Intent(MainActivity.this, PhotoTakingService.class);
         final Handler handler = new Handler();
 
@@ -229,6 +264,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             }
         };
         timer.schedule(dataCollectionTask, timerPeriod, timerPeriod);
+
         //It's advisable to run the export task with a delay that doesn't coincide with above period so that the tasks don't overlap
         //timer.schedule(dataExportTask, 330000, 300000);
 

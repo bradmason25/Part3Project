@@ -1,11 +1,15 @@
 package com.affectiva.part3project;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -18,10 +22,11 @@ public class SettingsActivity extends Activity{
 
     //GUI Variables
     LinearLayout mainLayout, layoutSplit, descriptionSplit, interfaceSplit;
-    TextView allowImagingTextMain, allowImagingTextSub;
-    CheckBox allowImagingCheck;
-    Button submitButton;
+    TextView periodTextMain, periodTextSub;
+    Button submitButton, cancelButton;
+    EditText periodNum;
     //Other Variables
+    SharedPreferences preferences;
     boolean allowImaging;
     String test;
 
@@ -37,18 +42,11 @@ public class SettingsActivity extends Activity{
         descriptionSplit = (LinearLayout) findViewById(R.id.description_split);
         interfaceSplit = (LinearLayout) findViewById(R.id.interface_split);
         //Initialise GUI TextViews
-        allowImagingTextMain = (TextView) findViewById(R.id.allow_imaging_text_main);
-        allowImagingTextSub = (TextView) findViewById(R.id.allow_imaging_text_sub);
+        periodTextMain = (TextView) findViewById(R.id.period_text_main);
+        periodTextSub = (TextView) findViewById(R.id.period_text_sub);
         //Initialise GUI inputs
-        allowImagingCheck = (CheckBox) findViewById(R.id.allow_imaging_check);
-        allowImagingCheck.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                allowImaging = b;
-            }
-        });
+        periodNum = (EditText) findViewById(R.id.period_num);
         //Initialise other variables
-        allowImaging = allowImagingCheck.isChecked();
         submitButton = (Button) findViewById(R.id.submit_button);
         submitButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -57,13 +55,29 @@ public class SettingsActivity extends Activity{
                 finish();
             }
         });
+        cancelButton = (Button) findViewById(R.id.cancel_button);
+        cancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finish();
+            }
+        });
+
+        preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        try {
+            periodNum.setText(String.valueOf(preferences.getInt("timerPeriod", 0)));
+        } catch(Exception e) {e.printStackTrace();}
 
     }
 
     private void submitVariables() {
-        test = String.valueOf(allowImaging);
-        //getApplication().setPeriod(test);
-        //getParentActivityIntent().putExtra("permit", test);
-        //TODO make the variable changes permanent in the main activity
+        try {
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putInt("timerPeriod", Integer.valueOf(periodNum.getText().toString()));
+            editor.commit();
+        } catch(Exception e) {
+            Log.e("Settings","Failure submitting new settings");
+            //e.printStackTrace();
+        }
     }
 }
