@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.hardware.Sensor;
@@ -35,11 +36,14 @@ import java.util.concurrent.Exchanger;
 
 /** Takes a single photo on service start. */
 public class PhotoTakingService extends Service implements SensorEventListener, Detector.ImageListener {
-
-    //Movement Sensor Setup
-    private SensorManager mSensorManager;
+    //Environmental Data Variables
+    private SensorManager mSenorManager;
     private Sensor motionDetector;
+    private Sensor stepCounter;
     private List<Double> movement;
+    private int steps;
+    private long timeCreated;
+
     //Photo Variables
     boolean isFocusing = false;
     Face face;
@@ -52,15 +56,49 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     public void onCreate() {
         super.onCreate();
 
-        csv = new CSV(getExternalFilesDir(null).toString()+"/exportData.csv");
-        //Movement Stuffs
+        csv = new CSV(getExternalFilesDir(null).toString()+"/emotionData.csv");
+
+        //Environmental Data stuff
+        timeCreated = System.currentTimeMillis();
         movement = new ArrayList<>();
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        motionDetector = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        mSensorManager.registerListener(this, motionDetector, SensorManager.SENSOR_DELAY_NORMAL);
+        steps = 0;
+        mSenorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        //To register a new listener you simply pass the method registerListener a type
+        //This is demonstrated below
+        registerListener(Sensor.TYPE_LINEAR_ACCELERATION);
+        registerListener(Sensor.TYPE_STEP_COUNTER);
 
         //Photo stuffs
         takePhoto(this);
+    }
+
+    private void registerListener(int sensorType) {
+        Sensor sensor = mSenorManager.getDefaultSensor(sensorType);
+        mSenorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    private double getAverageMovement() {
+        float sum = 0f;
+        for (Double d: movement) {
+            sum +=d;
+        }
+        return (sum/movement.size())*Math.pow(System.currentTimeMillis()-timeCreated/1000,2);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        Sensor s = sensorEvent.sensor;
+        float[] values = sensorEvent.values;
+        int counterSteps = 0;
+
+        if(s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+            movement.add(Math.sqrt(Math.pow(values[0],2)+Math.pow(values[1],2)+Math.pow(values[2],2)));
+        }
+        if(s.getType() == Sensor.TYPE_STEP_COUNTER) {
+            if(counterSteps<1)
+                counterSteps = (int) sensorEvent.values[0];
+            steps = (int) sensorEvent.values[0] - counterSteps;
+        }
     }
 
     private void processImage(Bitmap bmp) {
@@ -78,11 +116,17 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         stopDetector();
 
 
-        stopSelf();
+        //stopSelf();
     }
 
     public void onDestroy() {
         showMessage("Closing Service");
+        if(!noFace) {
+            String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
+                    String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getAverageMovement()), String.valueOf(steps),
+                    String.valueOf(System.currentTimeMillis())};
+            csv.addData(newLine);
+        }
         super.onDestroy();
     }
 
@@ -98,14 +142,11 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             @Override
             //The preview must happen at or after this point or takePicture fails
             public void surfaceCreated(SurfaceHolder holder) {
-                //showMessage("Surface created");
 
                 Camera camera = null;
 
                 try {
-                    //camera = openFrontFacingCameraGingerbread();
-                    camera = Camera.open(1);
-                    //showMessage("Opened camera");
+                    camera = Camera.open();
 
                     try {
                         camera.setPreviewDisplay(holder);
@@ -114,11 +155,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                     }
 
 
-                    Camera.Parameters params = camera.getParameters();
-                    params.setExposureCompensation(12);
-                    camera.setParameters(params);
                     camera.startPreview();
-                    //showMessage("Started preview");
 
                     final Camera.PictureCallback pictureCallback = new Camera.PictureCallback() {
 
@@ -126,7 +163,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         public void onPictureTaken(byte[] data, Camera camera) {
                             camera.release();
                             showMessage("Image Captured");
-                            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
+                            Bitmap bmp = rotateImage(BitmapFactory.decodeByteArray(data, 0, data.length),90);
 
                             File photo = new File(getExternalFilesDir(null).toString()+"/image"+System.currentTimeMillis()+".jpg");
                             FileOutputStream fos = null;
@@ -145,6 +182,14 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                             }
 
                             processImage(bmp);
+                        }
+
+                        private Bitmap rotateImage(Bitmap img, int degree) {
+                            Matrix matrix = new Matrix();
+                            matrix.postRotate(degree);
+                            Bitmap rotatedImg = Bitmap.createBitmap(img, 0, 0, img.getWidth(), img.getHeight(), matrix, true);
+                            img.recycle();
+                            return rotatedImg;
                         }
                     };
 
@@ -185,19 +230,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     }
 
 
-    public double getMovement() {
-        List<Double> temp = new ArrayList<>();
-        for (Double d: movement) {
-            temp.add(d);
-        }
-        movement.clear();
-        float sum = 0f;
-        for (Double d: temp) {
-            sum += d;
-        }
-        return (sum/temp.size())*Math.pow(10000/1000,2);
-    }
-
     private Camera openFrontFacingCameraGingerbread() {
         int cameraCount = 0;
         Camera cam = null;
@@ -223,17 +255,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        Sensor mySensor = event.sensor;
-        float[] values = event.values;
-
-        if (mySensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-            movement.add(Math.sqrt(Math.pow(values[0],2)+Math.pow(values[1],2)+Math.pow(values[2],2)));
-        }
-    }
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {}
 
     @Override
     public void onImageResults(List<Face> list, Frame frame, float v) {
@@ -245,9 +266,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         } else {
             face = list.get(0);
             noFace = false;
-            String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
-                    String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getMovement()), String.valueOf(System.currentTimeMillis())};
-            csv.addData(newLine);
             showMessage("Found A Face");
         }
     }
@@ -262,4 +280,9 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             detector.stop();
         }
     }
+
+
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {}
 }

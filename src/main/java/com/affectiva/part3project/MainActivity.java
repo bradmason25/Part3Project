@@ -58,7 +58,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     int previewHeight = 0;
     boolean SDKon;
     Face face;
-    Intent serviceIntent;
+    Intent emotionDataService;
 
     //Timer Variables
     int timerPeriod = 10000;
@@ -171,8 +171,8 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
 
     @Override
     protected void onDestroy() {
+        stopService(emotionDataService);
         super.onDestroy();
-        stopService(serviceIntent);
     }
 
     @Override
@@ -240,23 +240,31 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         cameraPreview.requestLayout();
     }
 
-    //This is where the scheduling is organised, once called it will create the events whereby data is captured and recorded along wiht
+    //This is where the scheduling is organised, once called it will create the events whereby data is captured and recorded along with
     //the events where data is exported to a server. These timers will begin once this method is called
     public void startTimers() {
-        serviceIntent = new Intent(MainActivity.this, PhotoTakingService.class);
+        emotionDataService = new Intent(MainActivity.this, PhotoTakingService.class);
         final Handler handler = new Handler();
 
         //This TimerTask also collects data from gui view which shouldn't be used in final data
         TimerTask dataCollectionTask = new TimerTask() {
+            boolean started;
             @Override
             public void run() {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         Log.i("Data Collection", "Called");
-
-                        if(!SDKon)
-                            startService(serviceIntent);
+                        if(started) {
+                            Log.i("Data Collection", "Killing previous service");
+                            stopService(emotionDataService);
+                            started = false;
+                        }
+                        if(!SDKon) {
+                            Log.i("Data Collection", "Starting new service");
+                            startService(emotionDataService);
+                            started = true;
+                        }
                         //debug.setText(newLine[4]);
                         //incrLog();
                     }

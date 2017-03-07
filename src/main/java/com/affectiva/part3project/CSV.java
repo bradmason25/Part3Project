@@ -56,11 +56,13 @@ public class CSV {
 
     public void clearData() {
         data.clear();
+        /*
         try {
             new PrintWriter(file).close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        */
     }
 
     public boolean readData(String filename) {

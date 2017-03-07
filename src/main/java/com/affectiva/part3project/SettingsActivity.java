@@ -72,6 +72,10 @@ public class SettingsActivity extends Activity{
 
     private void submitVariables() {
         try {
+            int newPeriod = Integer.valueOf(periodNum.getText().toString());
+            //Only permit periods larger than 1 seconds
+            if(newPeriod<=1)
+                return;//TODO maybe add some sort of message to explain why the setting wasn't changed
             SharedPreferences.Editor editor = preferences.edit();
             editor.putInt("timerPeriod", Integer.valueOf(periodNum.getText().toString()));
             editor.commit();
