@@ -27,8 +27,10 @@ import com.affectiva.android.affdex.sdk.detector.Detector;
 import com.affectiva.android.affdex.sdk.detector.Face;
 import com.affectiva.android.affdex.sdk.detector.PhotoDetector;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +39,6 @@ import java.util.concurrent.Exchanger;
 /** Takes a single photo on service start. */
 public class PhotoTakingService extends Service implements SensorEventListener, Detector.ImageListener {
     //Environmental Data Variables
-    private SensorManager mSenorManager;
-    private Sensor motionDetector;
-    private Sensor stepCounter;
     private List<Double> movement;
     private int steps;
     private long timeCreated;
@@ -56,13 +55,14 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     public void onCreate() {
         super.onCreate();
 
-        csv = new CSV(getExternalFilesDir(null).toString()+"/emotionData.csv");
+
+        //csv = new CSV(getExternalFilesDir(null).toString()+"/emotionData.csv");
 
         //Environmental Data stuff
         timeCreated = System.currentTimeMillis();
         movement = new ArrayList<>();
         steps = 0;
-        mSenorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+
         //To register a new listener you simply pass the method registerListener a type
         //This is demonstrated below
         registerListener(Sensor.TYPE_LINEAR_ACCELERATION);
@@ -73,8 +73,11 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     }
 
     private void registerListener(int sensorType) {
-        Sensor sensor = mSenorManager.getDefaultSensor(sensorType);
-        mSenorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+        SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        Sensor sensor = sensorManager.getDefaultSensor(sensorType);
+
+        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+        //showMessage("Registered Listener "+sensor.getStringType());
     }
 
     private double getAverageMovement() {
@@ -125,13 +128,31 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
                     String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getAverageMovement()), String.valueOf(steps),
                     String.valueOf(System.currentTimeMillis())};
-            csv.addData(newLine);
+            //csv.addData(newLine);
+            writeDate(newLine,getExternalFilesDir(null).toString()+"/emotionData.csv");
         }
         super.onDestroy();
     }
 
+    private boolean writeDate(String[] line, String file) {
+        Log.i("CSV","Writing Line");
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
+            for (int i=0; i<line.length-1; i++) {
+                bw.write(line[i]+",");
+            }
+            bw.write(line[line.length-1]+"\n");
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     @SuppressWarnings("deprecation")
     private void takePhoto(final Context context) {
+        showMessage("Starting Camera");
+
         final SurfaceView preview = new SurfaceView(context);
         SurfaceHolder holder = preview.getHolder();
         // deprecated setting, but required on Android versions prior to 3.0
@@ -203,6 +224,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         }
                     };
                     camera.autoFocus(autoFocusCallback);
+                    //camera.takePicture(null,null,pictureCallback);
                 } catch (Exception e) {
                     if (camera != null)
                         camera.release();
@@ -266,7 +288,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         } else {
             face = list.get(0);
             noFace = false;
-            showMessage("Found A Face");
+            showMessage("Face Found");
         }
     }
     void startDetector() {

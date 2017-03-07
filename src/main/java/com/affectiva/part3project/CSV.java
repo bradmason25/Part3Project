@@ -1,5 +1,7 @@
 package com.affectiva.part3project;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -36,6 +38,7 @@ public class CSV {
     }
 
     public boolean  addData(String[] line) {
+        Log.i("CSV","Adding Line");
         data.add(line);
         return writeDate(line);
     }
