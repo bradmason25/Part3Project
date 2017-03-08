@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Exchanger;
@@ -42,21 +43,18 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     private List<Double> movement;
     private int steps;
     private long timeCreated;
+    private int counterSteps = 0;
 
     //Photo Variables
     boolean isFocusing = false;
     Face face;
     boolean noFace = true;
 
-    private CSV csv;
     private PhotoDetector detector;
 
     @Override
     public void onCreate() {
         super.onCreate();
-
-
-        //csv = new CSV(getExternalFilesDir(null).toString()+"/emotionData.csv");
 
         //Environmental Data stuff
         timeCreated = System.currentTimeMillis();
@@ -64,6 +62,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         steps = 0;
 
         //To register a new listener you simply pass the method registerListener a type
+        //You must register a sensor in order for it to detect events
         //This is demonstrated below
         registerListener(Sensor.TYPE_LINEAR_ACCELERATION);
         registerListener(Sensor.TYPE_STEP_COUNTER);
@@ -92,7 +91,9 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     public void onSensorChanged(SensorEvent sensorEvent) {
         Sensor s = sensorEvent.sensor;
         float[] values = sensorEvent.values;
-        int counterSteps = 0;
+
+        //Here you can define what action to take when each sensor detects an event
+        //For example the first if statement here executes if there has been an even in the linear acceleration sensor
 
         if(s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
             movement.add(Math.sqrt(Math.pow(values[0],2)+Math.pow(values[1],2)+Math.pow(values[2],2)));
@@ -129,14 +130,27 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                     String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getAverageMovement()), String.valueOf(steps),
                     String.valueOf(System.currentTimeMillis())};
             //csv.addData(newLine);
-            writeDate(newLine,getExternalFilesDir(null).toString()+"/emotionData.csv");
+            writeDate(newLine,getExternalFilesDir(null).toString()+"/data.csv");
         }
         super.onDestroy();
     }
 
     private boolean writeDate(String[] line, String file) {
         Log.i("CSV","Writing Line");
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
+        try {
+            File newFile= new File (file);
+            FileWriter fw;
+            if (newFile.exists())
+            {
+                fw = new FileWriter(newFile,true);//if file exists append to file. Works fine.
+            }
+            else
+            {
+                newFile.createNewFile();
+                fw = new FileWriter(newFile);
+            }
+            BufferedWriter bw = new BufferedWriter(fw);
+
             for (int i=0; i<line.length-1; i++) {
                 bw.write(line[i]+",");
             }
@@ -186,6 +200,8 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                             showMessage("Image Captured");
                             Bitmap bmp = rotateImage(BitmapFactory.decodeByteArray(data, 0, data.length),90);
 
+                            //The code below was used to store the images to the local directory for debugging
+                            /*
                             File photo = new File(getExternalFilesDir(null).toString()+"/image"+System.currentTimeMillis()+".jpg");
                             FileOutputStream fos = null;
                             if (photo.exists())
@@ -201,6 +217,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                                     }
                                 } catch (Exception e) {e.printStackTrace();}
                             }
+                            */
 
                             processImage(bmp);
                         }
@@ -224,7 +241,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         }
                     };
                     camera.autoFocus(autoFocusCallback);
-                    //camera.takePicture(null,null,pictureCallback);
                 } catch (Exception e) {
                     if (camera != null)
                         camera.release();

@@ -64,7 +64,6 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     int timerPeriod = 10000;
     Timer timer = new Timer();
 
-    CSV csv;
     SharedPreferences preferences;
 
     @Override
@@ -137,8 +136,6 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         detector.setDetectAllEmojis(true);
         detector.setImageListener(this);
         detector.setOnCameraEventListener(this);
-
-        csv = new CSV(getExternalFilesDir(null).toString()+"/data.csv");
 
         preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         try {
