@@ -2,6 +2,7 @@ package com.affectiva.part3project;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -13,6 +14,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import org.w3c.dom.Text;
+
 /**
  * Created by brad on 23/02/2017.
  *
@@ -22,7 +25,7 @@ public class SettingsActivity extends Activity{
 
     //GUI Variables
     LinearLayout mainLayout, layoutSplit, descriptionSplit, interfaceSplit;
-    TextView periodTextMain, periodTextSub;
+    TextView periodTextMain, periodTextSub, errorMessage;
     Button submitButton, cancelButton;
     EditText periodNum;
     //Other Variables
@@ -44,6 +47,8 @@ public class SettingsActivity extends Activity{
         //Initialise GUI TextViews
         periodTextMain = (TextView) findViewById(R.id.period_text_main);
         periodTextSub = (TextView) findViewById(R.id.period_text_sub);
+        errorMessage = (TextView) findViewById(R.id.error_message);
+        errorMessage.setTextColor(Color.RED);
         //Initialise GUI inputs
         periodNum = (EditText) findViewById(R.id.period_num);
         //Initialise other variables
@@ -52,7 +57,6 @@ public class SettingsActivity extends Activity{
             @Override
             public void onClick(View view) {
                 submitVariables();
-                finish();
             }
         });
         cancelButton = (Button) findViewById(R.id.cancel_button);
@@ -74,11 +78,16 @@ public class SettingsActivity extends Activity{
         try {
             int newPeriod = Integer.valueOf(periodNum.getText().toString());
             //Only permit periods larger than 1 seconds
-            if(newPeriod<=1)
-                return;//TODO maybe add some sort of message to explain why the setting wasn't changed
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putInt("timerPeriod", Integer.valueOf(periodNum.getText().toString()));
-            editor.commit();
+            if(newPeriod<=1) {
+                errorMessage.setText("You set cannot set the period below 1 second");
+            }
+            else {
+                errorMessage.setText("");
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putInt("timerPeriod", Integer.valueOf(periodNum.getText().toString()));
+                editor.commit();
+                finish();
+            }
         } catch(Exception e) {
             Log.e("Settings","Failure submitting new settings");
             //e.printStackTrace();

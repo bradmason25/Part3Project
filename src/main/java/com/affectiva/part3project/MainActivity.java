@@ -25,16 +25,6 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-/**
- * This is a very bare sample app to demonstrate the usage of the CameraDetector object from Affectiva.
- * It displays statistics on frames per second, percentage of time a face was detected, and the user's smile score.
- *
- * The app shows off the maneuverability of the SDK by allowing the user to start and stop the SDK and also hide the camera SurfaceView.
- *
- * For use with SDK 2.02
- */
-
-
 //https://github.com/PhilJay/MPAndroidChart
 //This is the URL for help with the chart api that has already been added to the repositories
 
@@ -43,12 +33,13 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     final String LOG_TAG = "Part3Project";
 
     //GUI Variables
-    TextView resultTextView, emojiTextView, debug;
+    TextView resultTextView, emojiTextView;
     ToggleButton toggleButton;
     Button settingsButton;
     Intent settingsIntent;
     SurfaceView cameraPreview;
     RelativeLayout mainLayout;
+    int userDisplayMode = 0;
 
     //Camera Variables
     boolean isCameraBack = false;
@@ -213,15 +204,31 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             emojiTextView.setText("");
         } else {
             face = list.get(0);
-            if (face.emojis.getDominantEmoji().name().contains("UNKNOWN")) {
-                resultTextView.setText("NEUTRAL");
+            if (userDisplayMode == 0) {
+                if (face.emojis.getDominantEmoji().name().contains("UNKNOWN")) {
+                    resultTextView.setText("NEUTRAL");
+                } else {
+                    resultTextView.setText(face.emojis.getDominantEmoji().name());
+                }
+                emojiTextView.setText(face.emojis.getDominantEmoji().getUnicode());
             }
-            else {
-                resultTextView.setText(face.emojis.getDominantEmoji().name());
+            else if (userDisplayMode == 1) {
+                String[] emotions = {"Anger","Contempt","Disgust","Fear","Joy","Sadness","Suprise"};
+                float[] emotionsV = {face.emotions.getAnger(),face.emotions.getContempt(),face.emotions.getDisgust(),face.emotions.getFear(),face.emotions.getJoy(),face.emotions.getSadness(),face.emotions.getSurprise()};
+                emojiTextView.setText(String.valueOf(emotions[getDominantI(emotionsV)]));
             }
-            emojiTextView.setText(face.emojis.getDominantEmoji().getUnicode());
 
         }
+    }
+
+    private int getDominantI(float[] l) {
+        float max = 0;
+        int maxi = -1;
+        for(int i=0;i<l.length;i++) {
+            if (l[i]>max)
+                max = l[i]; maxi = i;
+        }
+        return maxi;
     }
 
     @SuppressWarnings("SuspiciousNameCombination")
@@ -243,7 +250,6 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         emotionDataService = new Intent(MainActivity.this, PhotoTakingService.class);
         final Handler handler = new Handler();
 
-        //This TimerTask also collects data from gui view which shouldn't be used in final data
         TimerTask dataCollectionTask = new TimerTask() {
             boolean started;
             @Override
@@ -262,16 +268,11 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
                             startService(emotionDataService);
                             started = true;
                         }
-                        //debug.setText(newLine[4]);
-                        //incrLog();
                     }
                 });
             }
         };
         timer.schedule(dataCollectionTask, timerPeriod, timerPeriod);
-
-        //It's advisable to run the export task with a delay that doesn't coincide with above period so that the tasks don't overlap
-        //timer.schedule(dataExportTask, 330000, 300000);
 
     }
 }

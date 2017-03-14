@@ -52,6 +52,11 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
 
     private PhotoDetector detector;
 
+    //This defines whether or not to save the images captured for debugging
+    //This should always be set to false for deployment but can be set to
+    //true if some debugging is needed on the images captured
+    boolean debugMode = false;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -118,9 +123,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         startDetector();
         detector.process(frame);
         stopDetector();
-
-
-        //stopSelf();
     }
 
     public void onDestroy() {
@@ -142,7 +144,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             FileWriter fw;
             if (newFile.exists())
             {
-                fw = new FileWriter(newFile,true);//if file exists append to file. Works fine.
+                fw = new FileWriter(newFile,true);
             }
             else
             {
@@ -181,12 +183,17 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                 Camera camera = null;
 
                 try {
-                    camera = Camera.open();
+                    camera = Camera.open(1);
 
                     try {
                         camera.setPreviewDisplay(holder);
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        try {
+                            camera = openFrontFacingCameraGingerbread();
+                        } catch (Exception ee) {
+                            camera = Camera.open();
+                            throw new RuntimeException(ee);
+                        }
                     }
 
 
@@ -198,26 +205,27 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         public void onPictureTaken(byte[] data, Camera camera) {
                             camera.release();
                             showMessage("Image Captured");
-                            Bitmap bmp = rotateImage(BitmapFactory.decodeByteArray(data, 0, data.length),90);
+                            Bitmap bmp = rotateImage(BitmapFactory.decodeByteArray(data, 0, data.length),270);
 
-                            //The code below was used to store the images to the local directory for debugging
-                            /*
-                            File photo = new File(getExternalFilesDir(null).toString()+"/image"+System.currentTimeMillis()+".jpg");
-                            FileOutputStream fos = null;
-                            if (photo.exists())
-                                photo.delete();
-                            try {
-                                fos = new FileOutputStream(photo.getPath());
-                                bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                            } catch (Exception e) {e.printStackTrace();}
-                            finally {
+                            if (debugMode) {
+                                //The code below can be used to store the images to the local directory for debugging
+
+                                File photo = new File(getExternalFilesDir(null).toString()+"/image"+System.currentTimeMillis()+".jpg");
+                                FileOutputStream fos = null;
+                                if (photo.exists())
+                                    photo.delete();
                                 try {
-                                    if (fos != null) {
-                                        fos.close();
-                                    }
+                                    fos = new FileOutputStream(photo.getPath());
+                                    bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
                                 } catch (Exception e) {e.printStackTrace();}
+                                finally {
+                                    try {
+                                        if (fos != null) {
+                                            fos.close();
+                                        }
+                                    } catch (Exception e) {e.printStackTrace();}
+                                }
                             }
-                            */
 
                             processImage(bmp);
                         }

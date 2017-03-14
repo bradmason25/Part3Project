@@ -15,5 +15,4 @@ apply from: "../module-defaults.gradle"
 dependencies {
     compile 'com.android.support:support-annotations:23.4.0'
     compile 'com.android.support:support-v4:22.2.1'
-    compile 'com.github.PhilJay:MPAndroidChart:v3.0.1'
 }
