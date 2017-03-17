@@ -49,10 +49,10 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     int previewHeight = 0;
     boolean SDKon;
     Face face;
-    Intent emotionDataService, exportDataService;
+    Intent collectDataService;
 
     //Timer Variables
-    int timerPeriod = 10000;
+    int timerPeriod = 20000;
     Timer timer = new Timer();
 
     SharedPreferences preferences;
@@ -134,7 +134,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             editor.putInt("timerPeriod", timerPeriod/1000);
             editor.commit();
         } catch(Exception e) {
-            Log.e("Settings","Failure submitting new settings");
+            showMessage("Failure submitting new settings");
             //e.printStackTrace();
         }
 
@@ -159,7 +159,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
 
     @Override
     protected void onDestroy() {
-        stopService(emotionDataService);
+        stopService(collectDataService);
         super.onDestroy();
     }
 
@@ -247,46 +247,50 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     //This is where the scheduling is organised, once called it will create the events whereby data is captured and recorded along with
     //the events where data is exported to a server. These timers will begin once this method is called
     public void startTimers() {
-        emotionDataService = new Intent(MainActivity.this, PhotoTakingService.class);
-        exportDataService = new Intent(MainActivity.this, DataExportService.class);
-        final Handler handler = new Handler();
-        //final Handler handlerB = new Handler();
+        collectDataService = new Intent(MainActivity.this, DataCollectionService.class);
 
         TimerTask dataCollectionTask = new TimerTask() {
             boolean started;
             @Override
             public void run() {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.i("Data Collection", "Called");
-                        if(started) {
-                            Log.i("Data Collection", "Killing previous service");
-                            stopService(emotionDataService);
-                            started = false;
-                        }
-                        if(!SDKon) {
-                            Log.i("Data Collection", "Starting new service");
-                            startService(emotionDataService);
-                            started = true;
-                        }
-                    }
-                });
+                if(started) {
+                    showMessage("Killing data collection service");
+                    stopService(collectDataService);
+                    started = false;
+                }
+                if(!SDKon) {
+                    showMessage("Starting data collection service");
+                    startService(collectDataService);
+                    started = true;
+                }
+            }
+        };
+        TimerTask photoTakingTask = new TimerTask() {
+            @Override
+            public void run() {
+                if(!SDKon) {
+                    showMessage("Starting camera service");
+                    startService(new Intent(MainActivity.this, PhotoTakingService.class));
+                }
             }
         };
         TimerTask dataExportationTask = new TimerTask() {
             @Override
             public void run() {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        startService(exportDataService);
-                    }
-                });
+                showMessage("Starting data sync");
+                new DataExportService().execute(getExternalFilesDir(null).toString());
+                startService(new Intent(MainActivity.this, DataExportService.class));
             }
         };
-        timer.schedule(dataCollectionTask, timerPeriod, timerPeriod);
-        timer.schedule(dataExportationTask, Math.round(timerPeriod*5.2), timerPeriod*5);
 
+        timer.schedule(dataCollectionTask, timerPeriod, timerPeriod);
+        timer.schedule(photoTakingTask, Math.round(timerPeriod*1.5), timerPeriod);
+        //timer.schedule(dataExportationTask, Math.round(timerPeriod*5.2), timerPeriod*5);
+        timer.schedule(dataExportationTask, Math.round(timerPeriod*2.2), timerPeriod*2);
+
+    }
+
+    private void showMessage(String message) {
+        Log.i("Main",message);
     }
 }

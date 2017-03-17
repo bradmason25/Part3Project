@@ -2,6 +2,7 @@ package com.affectiva.part3project;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -22,29 +23,30 @@ import java.net.InetAddress;
  * Created by brad on 17/03/2017.
  */
 
-public class DataExportService extends Service {
-    String serverDomain = "svm-bm6g14-partIIIproject.ecs.soton.ac.uk";
-    String filename = getExternalFilesDir(null).toString()+"/data.csv";
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+public class DataExportService extends AsyncTask<String, Void, Void> {
+    String serverDomain;
+    String filename;
 
-    public void onCreate() {
-        super.onCreate();
+    @Override
+    protected Void doInBackground(String... dirPath) {
+        serverDomain = "svm-bm6g14-partIIIproject.ecs.soton.ac.uk";
+        //filename = getExternalFilesDir(null).toString()+"/data.csv";
+        filename = dirPath[0]+"/data.csv";
+
         String data = "";
         try {
-            copy(new File(filename), new File(getExternalFilesDir(null).toString()+"backup.csv"));
+            copy(new File(filename), new File(dirPath[0]+"/backup.csv"));
             Log.i("Comms","Backed Up CSV");
             data = getDataFromFile(filename);
             sendToServer(data, serverDomain);
         } catch (Exception e) {
             Log.i("Comms","Transmission Failed");
+            e.printStackTrace();
             if (!writeDate(data.split("\n"), filename))
                 Log.i("Comms","Accidental data loss");
         }
-        stopSelf();
+
+        return null;
     }
 
     private void sendToServer(String data, String server) throws IOException{
@@ -91,7 +93,8 @@ public class DataExportService extends Service {
             for (int i=0; i<line.length-1; i++) {
                 bw.write(line[i]+",");
             }
-            bw.write(line[line.length-1]+"\n");
+            if (line.length>0)
+                bw.write(line[line.length-1]+"\n");
             bw.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -113,4 +116,6 @@ public class DataExportService extends Service {
         in.close();
         out.close();
     }
+
+
 }

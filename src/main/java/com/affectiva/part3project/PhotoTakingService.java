@@ -17,6 +17,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.IBinder;
+import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -38,12 +39,8 @@ import java.util.List;
 import java.util.concurrent.Exchanger;
 
 /** Takes a single photo on service start. */
-public class PhotoTakingService extends Service implements SensorEventListener, Detector.ImageListener {
-    //Environmental Data Variables
-    private List<Double> movement;
-    private int steps;
-    private long timeCreated;
-    private int counterSteps = 0;
+public class PhotoTakingService extends Service implements Detector.ImageListener {
+
 
     //Photo Variables
     boolean isFocusing = false;
@@ -61,54 +58,10 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
     public void onCreate() {
         super.onCreate();
 
-        //Environmental Data stuff
-        timeCreated = System.currentTimeMillis();
-        movement = new ArrayList<>();
-        steps = 0;
-
-        //To register a new listener you simply pass the method registerListener a type
-        //You must register a sensor in order for it to detect events
-        //This is demonstrated below
-        registerListener(Sensor.TYPE_LINEAR_ACCELERATION);
-        registerListener(Sensor.TYPE_STEP_COUNTER);
-
-        //Photo stuffs
+        showMessage("Starting Camera");
         takePhoto(this);
     }
 
-    private void registerListener(int sensorType) {
-        SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        Sensor sensor = sensorManager.getDefaultSensor(sensorType);
-
-        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
-        //showMessage("Registered Listener "+sensor.getStringType());
-    }
-
-    private double getAverageMovement() {
-        float sum = 0f;
-        for (Double d: movement) {
-            sum +=d;
-        }
-        return (sum/movement.size())*Math.pow(System.currentTimeMillis()-timeCreated/1000,2);
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent sensorEvent) {
-        Sensor s = sensorEvent.sensor;
-        float[] values = sensorEvent.values;
-
-        //Here you can define what action to take when each sensor detects an event
-        //For example the first if statement here executes if there has been an even in the linear acceleration sensor
-
-        if(s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-            movement.add(Math.sqrt(Math.pow(values[0],2)+Math.pow(values[1],2)+Math.pow(values[2],2)));
-        }
-        if(s.getType() == Sensor.TYPE_STEP_COUNTER) {
-            if(counterSteps<1)
-                counterSteps = (int) sensorEvent.values[0];
-            steps = (int) sensorEvent.values[0] - counterSteps;
-        }
-    }
 
     private void processImage(Bitmap bmp) {
         showMessage("Processing Image");
@@ -125,20 +78,15 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
         stopDetector();
     }
 
-    public void onDestroy() {
-        showMessage("Closing Service");
-        if(!noFace) {
-            String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
-                    String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(getAverageMovement()), String.valueOf(steps),
-                    String.valueOf(System.currentTimeMillis())};
-            //csv.addData(newLine);
-            writeDate(newLine,getExternalFilesDir(null).toString()+"/data.csv");
-        }
-        super.onDestroy();
+    private void flushResults() {
+        showMessage("Flushing emotion data");
+        String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
+                String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(System.currentTimeMillis())};
+
+        writeDate(newLine,getExternalFilesDir(null).toString()+"/emotion.csv");
     }
 
     private boolean writeDate(String[] line, String file) {
-        Log.i("CSV","Writing Line");
         try {
             File newFile= new File (file);
             FileWriter fw;
@@ -167,8 +115,6 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
 
     @SuppressWarnings("deprecation")
     private void takePhoto(final Context context) {
-        showMessage("Starting Camera");
-
         final SurfaceView preview = new SurfaceView(context);
         SurfaceHolder holder = preview.getHolder();
         // deprecated setting, but required on Android versions prior to 3.0
@@ -180,20 +126,18 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             //The preview must happen at or after this point or takePicture fails
             public void surfaceCreated(SurfaceHolder holder) {
 
+                showMessage("Start Building the Camera");
                 Camera camera = null;
 
+
                 try {
-                    camera = Camera.open(1);
+                    camera = openFrontFacingCameraGingerbread();
+                    showMessage("Opened the front camera :)");
 
                     try {
                         camera.setPreviewDisplay(holder);
                     } catch (IOException e) {
-                        try {
-                            camera = openFrontFacingCameraGingerbread();
-                        } catch (Exception ee) {
-                            camera = Camera.open();
-                            throw new RuntimeException(ee);
-                        }
+                        throw new RuntimeException(e);
                     }
 
 
@@ -205,25 +149,28 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                         public void onPictureTaken(byte[] data, Camera camera) {
                             camera.release();
                             showMessage("Image Captured");
-                            Bitmap bmp = rotateImage(BitmapFactory.decodeByteArray(data, 0, data.length),270);
+                            Bitmap bmp = rotateImage(BitmapFactory.decodeByteArray(data, 0, data.length), 270);
 
                             if (debugMode) {
                                 //The code below can be used to store the images to the local directory for debugging
 
-                                File photo = new File(getExternalFilesDir(null).toString()+"/image"+System.currentTimeMillis()+".jpg");
+                                File photo = new File(getExternalFilesDir(null).toString() + "/image" + System.currentTimeMillis() + ".jpg");
                                 FileOutputStream fos = null;
                                 if (photo.exists())
                                     photo.delete();
                                 try {
                                     fos = new FileOutputStream(photo.getPath());
                                     bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                                } catch (Exception e) {e.printStackTrace();}
-                                finally {
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                } finally {
                                     try {
                                         if (fos != null) {
                                             fos.close();
                                         }
-                                    } catch (Exception e) {e.printStackTrace();}
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
 
@@ -250,9 +197,10 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
                     };
                     camera.autoFocus(autoFocusCallback);
                 } catch (Exception e) {
+                    showMessage("Failed to open front camera, giving up");
                     if (camera != null)
                         camera.release();
-                    throw new RuntimeException(e);
+                    //throw new RuntimeException(e);
                 }
             }
 
@@ -313,6 +261,7 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             face = list.get(0);
             noFace = false;
             showMessage("Face Found");
+            flushResults();
         }
     }
     void startDetector() {
@@ -326,9 +275,4 @@ public class PhotoTakingService extends Service implements SensorEventListener, 
             detector.stop();
         }
     }
-
-
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {}
 }

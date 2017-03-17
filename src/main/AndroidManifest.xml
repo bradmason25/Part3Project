@@ -32,6 +32,9 @@
             android:label="Settings"/>
 
         <service
+            android:name="com.affectiva.part3project.DataCollectionService"
+            android:label="DataCollection"/>
+        <service
             android:name="com.affectiva.part3project.PhotoTakingService"
             android:label="PhotoTaking"/>
         <service
