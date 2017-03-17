@@ -30,7 +30,6 @@ public class SettingsActivity extends Activity{
     EditText periodNum;
     //Other Variables
     SharedPreferences preferences;
-    boolean allowImaging;
     String test;
 
     protected void onCreate(Bundle savedInstanceState) {

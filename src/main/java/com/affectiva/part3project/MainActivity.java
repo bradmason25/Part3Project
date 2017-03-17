@@ -49,7 +49,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     int previewHeight = 0;
     boolean SDKon;
     Face face;
-    Intent emotionDataService;
+    Intent emotionDataService, exportDataService;
 
     //Timer Variables
     int timerPeriod = 10000;
@@ -248,7 +248,9 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     //the events where data is exported to a server. These timers will begin once this method is called
     public void startTimers() {
         emotionDataService = new Intent(MainActivity.this, PhotoTakingService.class);
+        exportDataService = new Intent(MainActivity.this, DataExportService.class);
         final Handler handler = new Handler();
+        //final Handler handlerB = new Handler();
 
         TimerTask dataCollectionTask = new TimerTask() {
             boolean started;
@@ -272,7 +274,19 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
                 });
             }
         };
+        TimerTask dataExportationTask = new TimerTask() {
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        startService(exportDataService);
+                    }
+                });
+            }
+        };
         timer.schedule(dataCollectionTask, timerPeriod, timerPeriod);
+        timer.schedule(dataExportationTask, Math.round(timerPeriod*5.2), timerPeriod*5);
 
     }
 }
