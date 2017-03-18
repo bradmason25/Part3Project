@@ -82,8 +82,14 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
 
     private void flushResults() {
         showMessage("Flushing emotion data");
-        String[] newLine = {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
-                String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(System.currentTimeMillis())};
+        String nothing = "0.0";
+        String[] newLine;
+        if(!noFace) {
+            newLine = new String[] {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
+                    String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(System.currentTimeMillis())};
+        } else {
+            newLine = new String[] {nothing, nothing, nothing, nothing, nothing, nothing, nothing, String.valueOf(System.currentTimeMillis())};
+        }
 
         writeDate(newLine,getExternalFilesDir(null).toString()+"/emotion.csv");
         stopSelf();
@@ -260,7 +266,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         if (list.size() == 0) {
             noFace = true;
             showMessage("No Face Found");
-            stopSelf();
+            flushResults();
         } else {
             face = list.get(0);
             noFace = false;

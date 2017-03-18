@@ -18,32 +18,59 @@ import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Created by brad on 17/03/2017.
  */
 
 public class DataExportService extends AsyncTask<String, Void, Void> {
-    String serverDomain;
+    String serverDomain, prefix, movFilename, emotFilename;
     String filename;
+    int timerPeriod;
 
     @Override
-    protected Void doInBackground(String... dirPath) {
+    protected Void doInBackground(String... vars) {
         serverDomain = "svm-bm6g14-partIIIproject.ecs.soton.ac.uk";
-        //filename = getExternalFilesDir(null).toString()+"/data.csv";
-        filename = dirPath[0]+"/data.csv";
+        prefix = vars[0]+"/";
+        movFilename = prefix+"data.csv";
+        emotFilename = prefix+"emotion.csv";
+        timerPeriod = Integer.parseInt(vars[1]);
 
-        String data = "";
+        String[] movementData=null, emotionData=null;
+        boolean dataRemoved = false;
         try {
-            copy(new File(filename), new File(dirPath[0]+"/backup.csv"));
-            Log.i("Comms","Backed Up CSV");
-            data = getDataFromFile(filename);
-            sendToServer(data, serverDomain);
+            movementData = getDataFromFile(movFilename).split("\n");
+            emotionData = getDataFromFile(emotFilename).split("\n");
+            showMessage("Collected Data");
+            deleteFile(movFilename); deleteFile(emotFilename);
+            showMessage("Removed old files");
+            dataRemoved = true;
+
+            String[] collatedData = collateData(movementData, emotionData);
+            showMessage("Collated Data - "+collatedData.length+ " items");
+            for(int i=0;i<collatedData.length;i++) {
+                sendToServer(collatedData[i]+"\n", serverDomain);
+            }
+            showMessage("Sent "+String.valueOf(collatedData.length)+" items");
+
         } catch (Exception e) {
-            Log.i("Comms","Transmission Failed");
+            showMessage("Transmission Failed");
             e.printStackTrace();
-            if (!writeDate(data.split("\n"), filename))
-                Log.i("Comms","Accidental data loss");
+            try {
+                if (dataRemoved) {
+                    for (int i = 0; i < movementData.length; i++) {
+                        writeDate(movementData[i].split(","), movFilename);
+                    }
+                    for (int i = 0; i < emotionData.length; i++) {
+                        writeDate(emotionData[i].split(","), emotFilename);
+                    }
+                }
+                showMessage("Restored data");
+            } catch (Exception ee) {
+                showMessage("Data restoration fail");
+            }
         }
 
         return null;
@@ -103,7 +130,7 @@ public class DataExportService extends AsyncTask<String, Void, Void> {
         return true;
     }
 
-    public void copy(File src, File dst) throws IOException {
+    private void copy(File src, File dst) throws IOException {
         InputStream in = new FileInputStream(src);
         OutputStream out = new FileOutputStream(dst);
 
@@ -115,6 +142,52 @@ public class DataExportService extends AsyncTask<String, Void, Void> {
         }
         in.close();
         out.close();
+    }
+
+    private void deleteFile(String filename) {
+        File file = new File(filename);
+        file.delete();
+    }
+
+    private String[] collateData(String[] movData, String[] emotData) {
+        int movLength = movData.length;
+        int emotLength = emotData.length;
+        String[] colData=null, emot, mov;
+        long movTime, emotTime;
+
+        if (movLength <= emotLength) {
+            colData = new String[movLength];
+            for (int i=0;i<movLength;i++) {
+                mov = movData[i].split(",");
+                movTime = Long.parseLong(mov[mov.length-1]);
+                for (int j=0;j<emotLength;j++) {
+                    emot = emotData[j].split(",");
+                    emotTime = Long.parseLong(emot[emot.length-1]);
+                    if (emotTime<movTime && emotTime>(movTime-timerPeriod)) {
+                        colData[i] = emot[0]+","+emot[1]+","+emot[2]+","+emot[3]+","+emot[4]+","+emot[5]+","+emot[6]+","+mov[0]+","+mov[1];
+                    }
+                }
+            }
+        }else {
+            colData = new String[emotLength];
+            for (int i=0;i<emotLength;i++) {
+                emot = emotData[i].split(",");
+                emotTime = Long.parseLong(emot[emot.length-1]);
+                for (int j=0;j<movLength;j++) {
+                    mov = movData[j].split(",");
+                    movTime = Long.parseLong(mov[mov.length-1]);
+                    if (emotTime<movTime && emotTime>(movTime+timerPeriod)) {
+                        colData[i] = emot[0]+","+emot[1]+","+emot[2]+","+emot[3]+","+emot[4]+","+emot[5]+","+emot[6]+","+mov[0]+","+mov[1];
+                    }
+                }
+            }
+        }
+
+        return colData;
+    }
+
+    private void showMessage(String message) {
+        Log.i("Comms",message);
     }
 
 

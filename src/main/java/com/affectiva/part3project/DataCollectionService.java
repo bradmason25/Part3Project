@@ -84,7 +84,7 @@ public class DataCollectionService extends Service implements SensorEventListene
         Sensor sensor = sensorManager.getDefaultSensor(sensorType);
 
         sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
-        showMessage("Registered Listener "+sensor.getStringType());
+        //showMessage("Registered Listener "+sensor.getStringType());
     }
 
     private double getAverageMovement() {

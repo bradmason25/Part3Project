@@ -278,8 +278,9 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             @Override
             public void run() {
                 showMessage("Starting data sync");
-                new DataExportService().execute(getExternalFilesDir(null).toString());
-                startService(new Intent(MainActivity.this, DataExportService.class));
+                String[] vars = {getExternalFilesDir(null).toString(),String.valueOf(timerPeriod)};
+                new DataExportService().execute(vars);
+                //startService(new Intent(MainActivity.this, DataExportService.class));
             }
         };
 
