@@ -37,9 +37,6 @@
         <service
             android:name="com.affectiva.part3project.PhotoTakingService"
             android:label="PhotoTaking"/>
-        <service
-            android:name="com.affectiva.part3project.DataExportService"
-            android:label="DataExport"/>
 
     </application>
 

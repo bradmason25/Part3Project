@@ -7,6 +7,7 @@ package com.affectiva.part3project;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -72,6 +73,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         detector.setDetectAllExpressions(true);
         detector.setDetectAllAppearances(true);
         detector.setImageListener(this);
+        detector.disableAnalytics();
 
         startDetector();
         detector.process(frame);
@@ -84,6 +86,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
                 String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(System.currentTimeMillis())};
 
         writeDate(newLine,getExternalFilesDir(null).toString()+"/emotion.csv");
+        stopSelf();
     }
 
     private boolean writeDate(String[] line, String file) {
@@ -257,6 +260,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         if (list.size() == 0) {
             noFace = true;
             showMessage("No Face Found");
+            stopSelf();
         } else {
             face = list.get(0);
             noFace = false;
