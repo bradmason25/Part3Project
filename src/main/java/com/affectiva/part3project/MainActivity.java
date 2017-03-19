@@ -52,7 +52,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     Intent collectDataService;
 
     //Timer Variables
-    int timerPeriod = 40000;
+    int timerPeriod = 300*1000;
     Timer timer = new Timer();
 
     SharedPreferences preferences;

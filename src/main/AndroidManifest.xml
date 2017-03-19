@@ -20,7 +20,7 @@
         <activity
             android:name="com.affectiva.part3project.MainActivity"
             android:configChanges="keyboardHidden|screenSize|orientation"
-            android:label="Main">
+            android:label="Part3Project">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

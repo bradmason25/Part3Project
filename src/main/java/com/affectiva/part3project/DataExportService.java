@@ -1,10 +1,6 @@
 package com.affectiva.part3project;
 
-import android.app.Service;
-import android.content.Intent;
 import android.os.AsyncTask;
-import android.os.IBinder;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.BufferedWriter;
@@ -18,8 +14,6 @@ import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 /**
  * Created by brad on 17/03/2017.
@@ -27,7 +21,6 @@ import java.util.Arrays;
 
 public class DataExportService extends AsyncTask<String, Void, Void> {
     String serverDomain, prefix, movFilename, emotFilename;
-    String filename;
     int timerPeriod;
 
     @Override
@@ -128,20 +121,6 @@ public class DataExportService extends AsyncTask<String, Void, Void> {
             return false;
         }
         return true;
-    }
-
-    private void copy(File src, File dst) throws IOException {
-        InputStream in = new FileInputStream(src);
-        OutputStream out = new FileOutputStream(dst);
-
-        // Transfer bytes from in to out
-        byte[] buf = new byte[1024];
-        int len;
-        while ((len = in.read(buf)) > 0) {
-            out.write(buf, 0, len);
-        }
-        in.close();
-        out.close();
     }
 
     private void deleteFile(String filename) {
