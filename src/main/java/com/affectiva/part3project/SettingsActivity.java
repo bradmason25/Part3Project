@@ -16,9 +16,14 @@ import android.widget.TextView;
 
 import org.w3c.dom.Text;
 
-/**
- * Created by brad on 23/02/2017.
- *
+/*
+This class is the handler for the settings menu. If you wish to alter what settings can be changed, you would need to edit it here.
+You would also need to modify the 'onActivityResults' method from the 'MainActivity' class for the way the submitted settings are handled.
+
+In order to add your own settings you would need to use new variables for the graphical elements as well as the actual variables you wish to alter.
+The code below is a demonstration of how to implement this with the timer variable used by the timer to know when to next call the services.
+
+If you implement a new setting, be sure to keep the final variable modifications in the 'submitVariables' method, as this is called when the user presses the submit button on the graphical interface
  */
 
 public class SettingsActivity extends Activity{
@@ -81,10 +86,15 @@ public class SettingsActivity extends Activity{
                 errorMessage.setText("You set cannot set the period below 1 second");
             }
             else {
+                //Reset the error message in case it was used
                 errorMessage.setText("");
+                //Here you prepare the Android settings persistency class
                 SharedPreferences.Editor editor = preferences.edit();
+                //You use this method to add a variable to the settings
                 editor.putInt("timerPeriod", Integer.valueOf(periodNum.getText().toString()));
+                //Once all variables have been prepare they are submitted
                 editor.commit();
+                //The variables will then be handled by the 'MainActivy' class when this interface closes
                 finish();
             }
         } catch(Exception e) {

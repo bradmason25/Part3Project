@@ -19,8 +19,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by brad on 17/03/2017.
+/*
+The DataCollectionService is used called by the timers within 'MainAcitivity'.
+It is implemented by allowing it to run indefinitely, then when the timer is next called the service is destroyed.
+Therefore, the call to flush the collected data is called from within the 'onDestroy' method.
+
+The purpose of this class is to collect the environmental data used by the study.
+This particular implementation is a demonstration that collected both the number of steps taken whilst the service is running,
+and the acceleration data. It sums the acceleration data and then find the average upon the death of the service.
+
+This is likely the main class that should be modified for the purpose of a different experimental study.
+Below are comments for a guide of what you might wish to modify, and how the code has been designed to make this process
+as simple and helpful as possible.
  */
 
 public class DataCollectionService extends Service implements SensorEventListener{
@@ -73,6 +83,7 @@ public class DataCollectionService extends Service implements SensorEventListene
         //In order to add to this you need to add the necessary data item to the array
 
         showMessage("Flushing Sensor Data");
+        //This is the array you would add any additional data you wish to add to the csv
         String[] newLine = {String.valueOf(getAverageMovement()),String.valueOf(steps),String.valueOf(System.currentTimeMillis())};
         writeDate(newLine, getExternalFilesDir(null).toString()+"/data.csv");
 
@@ -87,6 +98,7 @@ public class DataCollectionService extends Service implements SensorEventListene
         //showMessage("Registered Listener "+sensor.getStringType());
     }
 
+    //This method uses the acceleration data collected throughout this services lifetime and finds the average
     private double getAverageMovement() {
         float sum = 0f;
         for (Double d: movement) {
@@ -97,6 +109,9 @@ public class DataCollectionService extends Service implements SensorEventListene
 
 
 
+    //This is a method used to write an array of strings to a file.
+    //It is designed to work with csv files, the elements of the array are written on the same line with a comma seperator.
+    //The line is ended with a new line to allow additional additions at a later date
     private boolean writeDate(String[] line, String file) {
         try {
             File newFile= new File (file);
@@ -128,6 +143,7 @@ public class DataCollectionService extends Service implements SensorEventListene
         Log.i("DataCollection",message);
     }
 
+    //The methods below are required by the interface but are not used by this implementation and are thus left blank.
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {}
     @Nullable

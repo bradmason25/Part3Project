@@ -1,10 +1,23 @@
 package com.affectiva.part3project;
 
+
+/*
+This is the main class, this is what is ran by default for the application.
+
+It contains the main camera preview display with the emoji representation prediction.
+
+Whilst this class is in focus the application does not collect environmental or emotional data intended to be analysed.
+
+This class does not deal with the specifics of the data collection, it controls the timer for the services that do the data collection.
+It also controls the effect of the settings menu and thus may wish to be modified if you change the contents of the settings.
+The 'onActivityResult' method will show you how to handle the settings that have been submitted.
+
+ */
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.SurfaceView;
@@ -24,10 +37,6 @@ import com.affectiva.android.affdex.sdk.detector.Face;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-
-//https://github.com/PhilJay/MPAndroidChart
-//This is the URL for help with the chart api that has already been added to the repositories
-
 
 public class MainActivity extends Activity implements Detector.ImageListener, CameraDetector.CameraEventListener {
     final String LOG_TAG = "Part3Project";
@@ -55,6 +64,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     int timerPeriod = 300*1000;
     Timer timer = new Timer();
 
+    //Variable used for the Android settings
     SharedPreferences preferences;
 
     @Override
@@ -62,8 +72,8 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //Initialise Variables
         SDKon = true;
+        //Initialise GUI Variables
         resultTextView = (TextView) findViewById(R.id.result_textview);
         emojiTextView = (TextView) findViewById(R.id.emoji_textview);
 
@@ -76,8 +86,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             }
         });
 
-
-
+        //Initialise Settings Variables
         String permit = "false";
         settingsIntent = new Intent(MainActivity.this, SettingsActivity.class);
         settingsIntent.putExtra("permit", permit);
@@ -122,12 +131,14 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         cameraPreview.setLayoutParams(params);
         mainLayout.addView(cameraPreview,0);
 
+        //This is where we prepare the emotion API to use the live camera preview
         detector = new CameraDetector(this, CameraDetector.CameraType.CAMERA_FRONT, cameraPreview);
         detector.setDetectAllEmotions(true);
         detector.setDetectAllEmojis(true);
         detector.setImageListener(this);
         detector.setOnCameraEventListener(this);
 
+        //Configuration to allow settings persistency from the settings menu (we need the variables defined in the settings for this class)
         preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         try {
             SharedPreferences.Editor editor = preferences.edit();
@@ -138,6 +149,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             //e.printStackTrace();
         }
 
+        //Begin the data collection
         startTimers();
     }
 
@@ -159,6 +171,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
 
     @Override
     protected void onDestroy() {
+        //Force the environmental data collection to stop if the app closes
         stopService(collectDataService);
         super.onDestroy();
     }
@@ -196,6 +209,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
     }
 
     @Override
+    //This is the method that handles the faces found on the main screen
     public void onImageResults(List<Face> list, Frame frame, float v) {
         if (list == null)
             return;
@@ -205,6 +219,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         } else {
             face = list.get(0);
             if (userDisplayMode == 0) {
+                //Replace the name of unknown emotion with a more human readable name
                 if (face.emojis.getDominantEmoji().name().contains("UNKNOWN")) {
                     resultTextView.setText("NEUTRAL");
                 } else {
@@ -221,6 +236,7 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
         }
     }
 
+    //A method used multiple times to return the index of the largest value in an array of floats
     private int getDominantI(float[] l) {
         float max = 0;
         int maxi = -1;
@@ -253,6 +269,8 @@ public class MainActivity extends Activity implements Detector.ImageListener, Ca
             boolean started;
             @Override
             public void run() {
+                //The environmental data collection requires results over time, so we allow it to run until it is stopped
+                //It is stopped when the timer is next called
                 if(started) {
                     showMessage("Killing data collection service");
                     stopService(collectDataService);

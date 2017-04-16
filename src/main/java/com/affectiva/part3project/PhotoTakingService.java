@@ -39,7 +39,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Exchanger;
 
-/** Takes a single photo on service start. */
+/*
+ This method works in addition to the 'DataCollectionService' to collect the necessary data for the study
+ It captures an image from the device's front camera without informing the user that it is doing it,
+ it then processes the first facial image it detects to predict the emotion of the user based on their expression.
+
+ If you are modifying this project for use with a similar study, it is best not to modify this class
+ It will return the emotional results of the user of the phone and thus has no necessary configurations
+
+ Additionally it contains 2 methods that are using deprecated methods, due to the lack of any better options.
+ There is also a work-around to allow the service to capture images without first showing the user and should not be tampered with
+ Unless you know exactly what you are doing
+
+ Should you decide to alter the code, be aware that the data collation performed by the 'DataExportService' class relies on the number of elements collected and written to a csv.
+ If you change the data that is to be exported, make sure to also alter the data collation in order to suit the new data.
+ */
 public class PhotoTakingService extends Service implements Detector.ImageListener {
 
 
@@ -63,7 +77,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         takePhoto(this);
     }
 
-
+    //This method sets up the API's detector and then calls that detector to analyse the image passed to it
     private void processImage(Bitmap bmp) {
         showMessage("Processing Image");
         Frame.BitmapFrame frame = new Frame.BitmapFrame(bmp, Frame.COLOR_FORMAT.UNKNOWN_TYPE);
@@ -80,6 +94,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         stopDetector();
     }
 
+    //This method is used to convert the results of the image analysis and write them to a csv
     private void flushResults() {
         showMessage("Flushing emotion data");
         String nothing = "0.0";
@@ -88,6 +103,9 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
             newLine = new String[] {String.valueOf(face.emotions.getAnger()), String.valueOf(face.emotions.getContempt()), String.valueOf(face.emotions.getDisgust()), String.valueOf(face.emotions.getFear()),
                     String.valueOf(face.emotions.getJoy()), String.valueOf(face.emotions.getSadness()), String.valueOf(face.emotions.getSurprise()), String.valueOf(System.currentTimeMillis())};
         } else {
+            //This statement is used if no face is detected.
+            //Upon the collation of the emotion data with the environmental data, it is ideal to have the same number of data items,
+            //thus, it was more appropriate to send empty results than to send nothing at all.
             newLine = new String[] {nothing, nothing, nothing, nothing, nothing, nothing, nothing, String.valueOf(System.currentTimeMillis())};
         }
 
@@ -95,6 +113,9 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         stopSelf();
     }
 
+    //This is a method used to write an array of strings to a file.
+    //It is designed to work with csv files, the elements of the array are written on the same line with a comma seperator.
+    //The line is ended with a new line to allow additional additions at a later date
     private boolean writeDate(String[] line, String file) {
         try {
             File newFile= new File (file);
@@ -122,6 +143,15 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
         return true;
     }
 
+    /*This is a rather large and messy method that requires a lot of Android boiler plate code
+    It also uses multiple deprecated methods that would ideally be upgraded once the Android library has been updated but for now is the best solution
+    This method should not be altered as it contains a work-around for the requirement of a graphical preview of the image to be taken
+    which I needed to remove for the image to be taken without the user's knowledge.
+    As explained in my report this was necessary to capture a more natural expression for result accuracy
+
+    For clarity, unless you are improving upon the deprecated methods and are 100% aware of what you are doing,
+    DO NOT ALTER THIS CODE.
+    */
     @SuppressWarnings("deprecation")
     private void takePhoto(final Context context) {
         final SurfaceView preview = new SurfaceView(context);
@@ -225,7 +255,6 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
                 1, 1, //Must be at least 1x1
                 WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
                 0,
-                //Don't know if this is a safe default
                 PixelFormat.UNKNOWN);
 
         //Don't set the preview visibility to GONE or INVISIBLE
@@ -233,6 +262,10 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
     }
 
 
+    //This is another deprecated method use with no better solution
+    //This method accounts for the various possible implementations that are device specific to find the front camera
+    //This method also should not be altered, as it was tricky to implement correctly to work for as many devices as possible
+    @SuppressWarnings("deprecation")
     private Camera openFrontFacingCameraGingerbread() {
         int cameraCount = 0;
         Camera cam = null;
@@ -259,6 +292,7 @@ public class PhotoTakingService extends Service implements Detector.ImageListene
     @Override public IBinder onBind(Intent intent) { return null; }
 
 
+    //This method is called when the API has finished processing an image to handle the results
     @Override
     public void onImageResults(List<Face> list, Frame frame, float v) {
         if (list == null)
